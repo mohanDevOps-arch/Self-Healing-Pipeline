@@ -1,0 +1,132 @@
+name: DEV Pipeline - AI Auto Fix
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  dev-validation:
+    name: DEV validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt flake8 pylint black isort
+
+      - name: Run dev checks and save logs
+        run: |
+          set -o pipefail
+          mkdir -p ci-logs
+          status=0
+          black --check --line-length=100 app.py test_app.py 2>&1 | tee -a ci-logs/dev.log || status=$?
+          flake8 app.py test_app.py --max-line-length=100 --ignore=E501,W503 2>&1 | tee -a ci-logs/dev.log || status=$?
+          pylint app.py --fail-under=7.0 --disable=missing-docstring,too-many-arguments 2>&1 | tee -a ci-logs/dev.log || status=$?
+          isort --check-only app.py test_app.py 2>&1 | tee -a ci-logs/dev.log || status=$?
+          python -m py_compile app.py test_app.py 2>&1 | tee -a ci-logs/dev.log || status=$?
+          exit $status
+
+      - name: Upload DEV logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-ci-logs
+          path: ci-logs/dev.log
+
+  ai-analyzer:
+    name: AI analyzer
+    runs-on: ubuntu-latest
+    needs: dev-validation
+    if: always() && needs.dev-validation.result == 'failure'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download DEV logs
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-ci-logs
+          path: ci-logs
+
+      - name: Analyze failure with OpenAI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5-mini' }}
+        run: |
+          python scripts/analyze_ci_failure.py --stage dev --log-file ci-logs/dev.log --mode real_ai
+
+      - name: Upload AI analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-ai-analysis
+          path: ai-analysis.json
+
+  ai-repair-pr:
+    name: AI repair PR
+    runs-on: ubuntu-latest
+    needs: ai-analyzer
+    if: always() && needs.ai-analyzer.result == 'success' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download AI analysis
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-ai-analysis
+          path: .
+
+      - name: Apply DEV AI patch
+        run: |
+          python scripts/apply_ai_patch.py --stage dev --analysis ai-analysis.json
+          python -m py_compile app.py test_app.py
+
+      - name: Create DEV repair PR
+        id: dev-pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ai/dev-auto-fix-${{ github.run_id }}
+          title: "AI DEV auto-fix"
+          commit-message: "AI DEV auto-fix"
+          body-path: ai-analysis.json
+          delete-branch: true
+
+      - name: Auto-merge DEV repair PR
+        if: steps.dev-pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr merge ${{ steps.dev-pr.outputs.pull-request-number }} --squash --auto
