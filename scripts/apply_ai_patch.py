@@ -1,6 +1,7 @@
 import argparse
 import json
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -21,6 +22,11 @@ def replace_regex_once(path, pattern, replacement):
     return True
 
 
+def run_formatter(command):
+    result = subprocess.run(command, check=False)
+    return result.returncode == 0
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--stage", choices=["dev", "staging"], required=True)
@@ -37,9 +43,18 @@ def main():
     if args.stage == "dev" and decision == "auto_push_and_merge" and risk == "low":
         patched = replace_regex_once(
             app_file,
-            r"def get_users\(\)([^\n]*)(\n)",
-            r"def get_users():\1\2",
+            r"(?m)^def get_users\(\).*$",
+            "def get_users():",
         )
+        patched = replace_regex_once(
+            app_file,
+            r"(str\(data\.get\([\"']name[\"'],\s*[\"'][\"']\)\))strip\(",
+            r"\1.strip(",
+        ) or patched
+        targets = [str(path) for path in (Path("app.py"), Path("test_app.py")) if path.exists()]
+        if targets:
+            patched = run_formatter(["python", "-m", "black", "--line-length=100", *targets]) or patched
+            patched = run_formatter(["python", "-m", "isort", *targets]) or patched
 
     if (
         args.stage == "staging"

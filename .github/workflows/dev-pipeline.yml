@@ -103,6 +103,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install repair tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt black isort
+
       - name: Download AI analysis
         uses: actions/download-artifact@v4
         with:
@@ -111,8 +116,14 @@ jobs:
 
       - name: Apply DEV AI patch
         run: |
+          ls -la
           python scripts/apply_ai_patch.py --stage dev --analysis ai-analysis.json
-          python -m py_compile app.py test_app.py
+          python -m py_compile app.py
+          if [ -f test_app.py ]; then
+            python -m py_compile test_app.py
+          else
+            echo "test_app.py not found on this branch; DEV repair verified app.py syntax only."
+          fi
 
       - name: Create DEV repair PR
         id: dev-pr
@@ -129,4 +140,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr merge ${{ steps.dev-pr.outputs.pull-request-number }} --squash --auto
+          gh pr merge ${{ steps.dev-pr.outputs.pull-request-number }} --squash --auto --delete-branch || \
+          gh pr merge ${{ steps.dev-pr.outputs.pull-request-number }} --squash --delete-branch

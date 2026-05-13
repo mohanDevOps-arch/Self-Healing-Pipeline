@@ -103,13 +103,42 @@ def fallback_analysis(stage_key, log_text):
     )
     verification = "Rerun the failed GitHub Actions job and local tests before merging."
 
-    if "syntaxerror" in lower or "expected ':'" in lower or "missing colon" in lower:
+    if (
+        "would reformat" in lower
+        or "imports are incorrectly sorted" in lower
+        or "isort" in lower and "incorrectly" in lower
+        or "e302" in lower
+    ):
+        confidence = 0.98
+        risk = "low"
+        root_cause = "DEV validation failed because formatting/import style checks did not match Black, flake8, or isort rules."
+        fix = "Run Black and isort on app.py and test_app.py, then rerun DEV validation."
+        verification = "Black, flake8, isort, pylint, and py_compile all pass."
+    elif ")strip(" in lower or "))strip()" in lower or "strip()" in lower and "syntaxerror" in lower:
         confidence = 0.96
         risk = "low"
-        root_cause = "Python compilation failed because a function definition is missing a colon."
+        root_cause = "Python compilation failed because the `strip()` method call is missing the dot before `strip`."
         fix = (
-            "Add the missing colon, run `python -m py_compile app.py test_app.py`, "
-            "then push the generated fix."
+            "Change `str(data.get(\"name\", \"\"))strip()` to "
+            "`str(data.get(\"name\", \"\")).strip()`, then run `python -m py_compile app.py test_app.py`."
+        )
+        verification = "Compile succeeds and dev lint/syntax checks pass."
+    elif "::" in text and "def " in lower:
+        confidence = 0.96
+        risk = "low"
+        root_cause = "Python compilation failed because a function definition contains a malformed double colon."
+        fix = (
+            "Replace the malformed function definition line with exactly `def get_users():`, "
+            "then run `python -m py_compile app.py test_app.py`."
+        )
+        verification = "Compile succeeds and dev lint/syntax checks pass."
+    elif "syntaxerror" in lower or "expected ':'" in lower or "missing colon" in lower:
+        confidence = 0.96
+        risk = "low"
+        root_cause = "Python compilation failed because a function definition is malformed or missing a colon."
+        fix = (
+            "Replace the malformed function definition line with exactly `def get_users():`, "
+            "then run `python -m py_compile app.py test_app.py`."
         )
         verification = "Compile succeeds and dev lint/syntax checks pass."
     elif "assert 400 == 201" in lower or "name required" in lower:
