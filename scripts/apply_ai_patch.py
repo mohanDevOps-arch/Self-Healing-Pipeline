@@ -37,9 +37,14 @@ def main():
     if args.stage == "dev" and decision == "auto_push_and_merge" and risk == "low":
         patched = replace_regex_once(
             app_file,
-            r"def get_users\(\)([^\n]*)(\n)",
-            r"def get_users():\1\2",
+            r"(?m)^def get_users\(\).*$",
+            "def get_users():",
         )
+        patched = replace_regex_once(
+            app_file,
+            r"(str\(data\.get\([\"']name[\"'],\s*[\"'][\"']\)\))strip\(",
+            r"\1.strip(",
+        ) or patched
 
     if (
         args.stage == "staging"

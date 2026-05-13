@@ -103,13 +103,31 @@ def fallback_analysis(stage_key, log_text):
     )
     verification = "Rerun the failed GitHub Actions job and local tests before merging."
 
-    if "syntaxerror" in lower or "expected ':'" in lower or "missing colon" in lower:
+    if ")strip(" in lower or "))strip()" in lower or "strip()" in lower and "syntaxerror" in lower:
         confidence = 0.96
         risk = "low"
-        root_cause = "Python compilation failed because a function definition is missing a colon."
+        root_cause = "Python compilation failed because the `strip()` method call is missing the dot before `strip`."
         fix = (
-            "Add the missing colon, run `python -m py_compile app.py test_app.py`, "
-            "then push the generated fix."
+            "Change `str(data.get(\"name\", \"\"))strip()` to "
+            "`str(data.get(\"name\", \"\")).strip()`, then run `python -m py_compile app.py test_app.py`."
+        )
+        verification = "Compile succeeds and dev lint/syntax checks pass."
+    elif "::" in text and "def " in lower:
+        confidence = 0.96
+        risk = "low"
+        root_cause = "Python compilation failed because a function definition contains a malformed double colon."
+        fix = (
+            "Replace the malformed function definition line with exactly `def get_users():`, "
+            "then run `python -m py_compile app.py test_app.py`."
+        )
+        verification = "Compile succeeds and dev lint/syntax checks pass."
+    elif "syntaxerror" in lower or "expected ':'" in lower or "missing colon" in lower:
+        confidence = 0.96
+        risk = "low"
+        root_cause = "Python compilation failed because a function definition is malformed or missing a colon."
+        fix = (
+            "Replace the malformed function definition line with exactly `def get_users():`, "
+            "then run `python -m py_compile app.py test_app.py`."
         )
         verification = "Compile succeeds and dev lint/syntax checks pass."
     elif "assert 400 == 201" in lower or "name required" in lower:

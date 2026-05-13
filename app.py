@@ -31,7 +31,7 @@ def create_user():
     global user_id
 
     data = request.get_json(silent=True) or {}
-    name = str(data.get("name", ""))strip()
+    name = str(data.get("name", "")).strip()
 
     if not name:
         return jsonify({"error": "Name required"}), 400
