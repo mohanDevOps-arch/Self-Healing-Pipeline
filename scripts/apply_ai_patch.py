@@ -48,6 +48,11 @@ def main():
         )
         patched = replace_regex_once(
             app_file,
+            r"(?m)^(def\s+[A-Za-z_][A-Za-z0-9_]*\([^)]*\))\s*(#.*)?$",
+            lambda match: f"{match.group(1)}:{'  ' + match.group(2) if match.group(2) else ''}",
+        ) or patched
+        patched = replace_regex_once(
+            app_file,
             r"(str\(data\.get\([\"']name[\"'],\s*[\"'][\"']\)\))strip\(",
             r"\1.strip(",
         ) or patched
