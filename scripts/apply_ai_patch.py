@@ -81,9 +81,19 @@ def main():
     if args.stage == "dev" and decision == "auto_push_and_merge" and risk == "low":
         patched = replace_regex_all(
             app_file,
-            r"(?m)^\s*[-./\\]+\s*(#.*)?\n?",
+            r"(?m)^[-./\\]+\s*(#.*)?\n?",
             "",
         )
+        patched = replace_regex_all(
+            app_file,
+            r"(?m)^[A-Za-z_][A-Za-z0-9_]*\s*(#.*)?$",
+            "",
+        ) or patched
+        patched = replace_regex_all(
+            app_file,
+            r"(?m)^\d+\s*(#.*)?$",
+            "",
+        ) or patched
         patched = replace_regex_once(
             app_file,
             r"(?m)^def get_users\(\).*$",
