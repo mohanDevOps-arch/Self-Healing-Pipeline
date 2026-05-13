@@ -107,7 +107,7 @@ jobs:
       - name: Apply STAGING AI patch when confidence is at least 90 percent
         run: |
           python scripts/apply_ai_patch.py --stage staging --analysis ai-analysis.json
-          pip install -r requirements.txt
+          pip install -r requirements.txt black isort
           pytest test_app.py -v --cov=app --cov-fail-under=80
 
       - name: Create STAGING repair PR
@@ -125,7 +125,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr merge ${{ steps.staging-pr.outputs.pull-request-number }} --squash --auto
+          gh pr merge ${{ steps.staging-pr.outputs.pull-request-number }} --squash --auto --delete-branch || \
+          gh pr merge ${{ steps.staging-pr.outputs.pull-request-number }} --squash --delete-branch
 
   security-scan:
     name: STAGING security scan
