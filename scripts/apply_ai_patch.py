@@ -22,6 +22,15 @@ def replace_regex_once(path, pattern, replacement):
     return True
 
 
+def replace_regex_all(path, pattern, replacement):
+    text = path.read_text(encoding="utf-8")
+    updated, count = re.subn(pattern, replacement, text)
+    if count == 0:
+        return False
+    path.write_text(updated, encoding="utf-8")
+    return True
+
+
 def run_formatter(command):
     result = subprocess.run(command, check=False)
     return result.returncode == 0
@@ -41,11 +50,16 @@ def main():
     patched = False
 
     if args.stage == "dev" and decision == "auto_push_and_merge" and risk == "low":
+        patched = replace_regex_all(
+            app_file,
+            r"(?m)^\s*[-./\\]+\s*(#.*)?\n?",
+            "",
+        )
         patched = replace_regex_once(
             app_file,
             r"(?m)^def get_users\(\).*$",
             "def get_users():",
-        )
+        ) or patched
         patched = replace_regex_once(
             app_file,
             r"(?m)^(def\s+[A-Za-z_][A-Za-z0-9_]*\([^)]*\))\s*(#.*)?$",

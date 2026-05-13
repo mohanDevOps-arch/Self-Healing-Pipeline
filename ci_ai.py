@@ -103,7 +103,13 @@ def fallback_analysis(stage_key, log_text):
     )
     verification = "Rerun the failed GitHub Actions job and local tests before merging."
 
-    if (
+    if "syntaxerror" in lower and any(token in text for token in ("\n-\n", "\n.\n", "\n/\n")):
+        confidence = 0.95
+        risk = "low"
+        root_cause = "Python compilation failed because the source contains a standalone invalid token line."
+        fix = "Remove the stray punctuation line, then run `python -m py_compile app.py test_app.py`."
+        verification = "Compile succeeds and dev lint/syntax checks pass."
+    elif (
         "would reformat" in lower
         or "imports are incorrectly sorted" in lower
         or "isort" in lower and "incorrectly" in lower
