@@ -51,7 +51,7 @@ def get_user(uid):
 
 
 @app.route("/users/<int:uid>", methods=["DELETE"])
-def delete_user(uid)
+def delete_user(uid):
     if uid not in users:
         return jsonify({"error": "Not found"}), 404
     return jsonify(users.pop(uid)), 200
