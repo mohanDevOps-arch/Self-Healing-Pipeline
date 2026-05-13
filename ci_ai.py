@@ -103,11 +103,20 @@ def fallback_analysis(stage_key, log_text):
     )
     verification = "Rerun the failed GitHub Actions job and local tests before merging."
 
-    if "syntaxerror" in lower and any(token in text for token in ("\n-\n", "\n.\n", "\n/\n")):
+    if (
+        "syntaxerror" in lower
+        and (
+            any(token in text for token in ("\n-\n", "\n.\n", "\n/\n"))
+            or "nameerror" in lower
+            or "invalid decimal literal" in lower
+            or "invalid syntax" in lower
+            and any(marker in lower for marker in ("standalone", "junk", "unexpected"))
+        )
+    ):
         confidence = 0.95
         risk = "low"
-        root_cause = "Python compilation failed because the source contains a standalone invalid token line."
-        fix = "Remove the stray punctuation line, then run `python -m py_compile app.py test_app.py`."
+        root_cause = "Python compilation failed because the source contains a standalone accidental junk token line."
+        fix = "Remove the stray alphabet, number, or punctuation line, then run `python -m py_compile app.py test_app.py`."
         verification = "Compile succeeds and dev lint/syntax checks pass."
     elif (
         "would reformat" in lower
@@ -159,6 +168,49 @@ def fallback_analysis(stage_key, log_text):
             "`pytest test_app.py -v`."
         )
         verification = "User creation test returns 201 and the full staging test suite passes."
+    elif "assert 200 == 201" in lower or ("expected 201" in lower and "200" in lower):
+        confidence = 0.92
+        risk = "low"
+        root_cause = "The create-user endpoint returned HTTP 200, but resource creation must return HTTP 201."
+        fix = "Change the successful POST /users response from status 200 to 201, then rerun `pytest test_app.py -v`."
+        verification = "The create-user test receives 201 and the full staging suite passes."
+    elif "assert 200 == 404" in lower or ("not found" in lower and "expected 404" in lower):
+        confidence = 0.91
+        risk = "low"
+        root_cause = "The not-found path returned HTTP 200 instead of HTTP 404."
+        fix = "Return 404 for `Not found` responses, then rerun `pytest test_app.py -v`."
+        verification = "Missing-resource tests receive 404 and existing-resource tests still pass."
+    elif (
+        "keyerror" in lower
+        and "user" in lower
+        or "assert 0" in lower
+        and "len(response.json)" in lower
+        or "not stored" in lower
+        or "missing persistence" in lower
+    ):
+        confidence = 0.91
+        risk = "low"
+        root_cause = "The create-user flow does not persist the new user before returning or incrementing the id."
+        fix = "Restore `users[user_id] = {\"id\": user_id, \"name\": name}` before `user_id += 1`, then rerun tests."
+        verification = "Create, list, get, and delete user tests all pass."
+    elif "/health" in lower and ("404" in lower or "not found" in lower):
+        confidence = 0.88
+        risk = "high"
+        root_cause = "The production health check failed because the expected `/health` route is missing or renamed."
+        fix = "Restore the `/health` route or update deployment health-check configuration after human review."
+        verification = "Pre-production health check returns 200 before production rollout."
+    elif "docker" in lower and ("missing-file" in lower or "failed to compute cache key" in lower or "not found" in lower):
+        confidence = 0.86
+        risk = "high"
+        root_cause = "Docker build failed because the Dockerfile references a file that is not present in the build context."
+        fix = "Fix the Dockerfile COPY path or add the required file after human review."
+        verification = "Docker image builds successfully in a controlled environment."
+    elif "no module named flask" in lower or "modulenotfounderror" in lower and "flask" in lower:
+        confidence = 0.87
+        risk = "high"
+        root_cause = "The runtime failed because Flask is missing from installed dependencies."
+        fix = "Restore Flask in `requirements.txt` and verify dependency installation before deployment."
+        verification = "Dependency install succeeds and the app imports successfully."
     elif "db_host" in lower or "keyerror" in lower:
         confidence = 0.88
         risk = "high"

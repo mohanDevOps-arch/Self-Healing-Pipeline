@@ -36,6 +36,35 @@ def run_formatter(command):
     return result.returncode == 0
 
 
+def ensure_user_assignment(path):
+    text = path.read_text(encoding="utf-8")
+    assignment = '    users[user_id] = {"id": user_id, "name": name}'
+    active_assignment = re.search(r"(?m)^\s*users\[user_id\]\s*=", text)
+    if active_assignment:
+        return False
+
+    uncommented, count = re.subn(
+        r"(?m)^(\s*)#\s*users\[user_id\]\s*=.*$",
+        assignment,
+        text,
+        count=1,
+    )
+    if count:
+        path.write_text(uncommented, encoding="utf-8")
+        return True
+
+    inserted, count = re.subn(
+        r"(?m)^(\s*)user_id \+= 1$",
+        f"{assignment}\n\\1user_id += 1",
+        text,
+        count=1,
+    )
+    if count:
+        path.write_text(inserted, encoding="utf-8")
+        return True
+    return False
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--stage", choices=["dev", "staging"], required=True)
@@ -83,6 +112,26 @@ def main():
     ):
         patched = replace_once(app_file, "if data.get('name'):", "if not data.get('name'):")
         patched = replace_once(app_file, 'if data.get("name"):', 'if not data.get("name"):') or patched
+        patched = replace_once(
+            app_file,
+            "return jsonify(users[user_id - 1]), 200",
+            "return jsonify(users[user_id - 1]), 201",
+        ) or patched
+        patched = replace_once(
+            app_file,
+            'return jsonify({"error": "Not found"}), 200',
+            'return jsonify({"error": "Not found"}), 404',
+        ) or patched
+        patched = replace_once(
+            app_file,
+            "return jsonify({'error': 'Not found'}), 200",
+            "return jsonify({'error': 'Not found'}), 404",
+        ) or patched
+        patched = ensure_user_assignment(app_file) or patched
+        targets = [str(path) for path in (Path("app.py"), Path("test_app.py")) if path.exists()]
+        if targets:
+            patched = run_formatter(["python", "-m", "black", "--line-length=100", *targets]) or patched
+            patched = run_formatter(["python", "-m", "isort", *targets]) or patched
 
     if not patched:
         raise SystemExit("No safe demo patch was applicable.")
