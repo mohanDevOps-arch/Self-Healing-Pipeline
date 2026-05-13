@@ -1,6 +1,7 @@
 import argparse
 import json
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -19,6 +20,11 @@ def replace_regex_once(path, pattern, replacement):
         return False
     path.write_text(updated, encoding="utf-8")
     return True
+
+
+def run_formatter(command):
+    result = subprocess.run(command, check=False)
+    return result.returncode == 0
 
 
 def main():
@@ -45,6 +51,10 @@ def main():
             r"(str\(data\.get\([\"']name[\"'],\s*[\"'][\"']\)\))strip\(",
             r"\1.strip(",
         ) or patched
+        targets = [str(path) for path in (Path("app.py"), Path("test_app.py")) if path.exists()]
+        if targets:
+            patched = run_formatter(["python", "-m", "black", "--line-length=100", *targets]) or patched
+            patched = run_formatter(["python", "-m", "isort", *targets]) or patched
 
     if (
         args.stage == "staging"

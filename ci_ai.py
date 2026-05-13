@@ -103,7 +103,18 @@ def fallback_analysis(stage_key, log_text):
     )
     verification = "Rerun the failed GitHub Actions job and local tests before merging."
 
-    if ")strip(" in lower or "))strip()" in lower or "strip()" in lower and "syntaxerror" in lower:
+    if (
+        "would reformat" in lower
+        or "imports are incorrectly sorted" in lower
+        or "isort" in lower and "incorrectly" in lower
+        or "e302" in lower
+    ):
+        confidence = 0.98
+        risk = "low"
+        root_cause = "DEV validation failed because formatting/import style checks did not match Black, flake8, or isort rules."
+        fix = "Run Black and isort on app.py and test_app.py, then rerun DEV validation."
+        verification = "Black, flake8, isort, pylint, and py_compile all pass."
+    elif ")strip(" in lower or "))strip()" in lower or "strip()" in lower and "syntaxerror" in lower:
         confidence = 0.96
         risk = "low"
         root_cause = "Python compilation failed because the `strip()` method call is missing the dot before `strip`."
