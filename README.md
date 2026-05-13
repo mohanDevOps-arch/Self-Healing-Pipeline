@@ -1,6 +1,6 @@
 # Self-Healing AI CI/CD Demo
 
-This project is a small Flask API plus a self-healing AI pipeline dashboard. The split is intentional: `app.py` is the application under test, while `dashboard.py` stays available even when `app.py` is intentionally broken for the demo.
+This project is a small Flask API plus a self-healing AI pipeline dashboard. The split is intentional: `app.py` is the application under test, while `dashboard.py` stays available even when `app.py` is intentionally broken for the demo..
 
 `ci_ai.py` is the agent brain. It reads CI logs, uses OpenAI in real mode, classifies the failure, calculates confidence/risk, and decides whether the pipeline can self-heal or must stop for human approval.
 
