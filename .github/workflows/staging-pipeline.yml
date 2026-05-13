@@ -125,7 +125,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr merge ${{ steps.staging-pr.outputs.pull-request-number }} --squash --auto
+          gh pr merge ${{ steps.staging-pr.outputs.pull-request-number }} --squash --auto || \
+          gh pr merge ${{ steps.staging-pr.outputs.pull-request-number }} --squash --delete-branch
 
   security-scan:
     name: STAGING security scan
