@@ -8,9 +8,6 @@ app = Flask(__name__)
 users = {}
 user_id = 1
 
-# BROKEN: crashes during import/startup when production config is missing.
-DB_HOST = os.environ["DB_HOST"]
-
 
 @app.route("/health", methods=["GET"])
 def health():
@@ -19,7 +16,6 @@ def health():
             "service": "user-api",
             "status": "ok",
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "db_host": DB_HOST,
             "user_count": len(users),
         }
     ), 200
