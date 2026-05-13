@@ -66,6 +66,9 @@ def ensure_user_assignment(path):
 
 def is_allowed_staging_repair(decision, confidence, risk):
     normalized = str(decision or "").lower()
+    normalized_risk = str(risk or "").lower()
+    if confidence > 1:
+        confidence = confidence / 100
     allowed_tokens = (
         "auto_push_merge_after_positive_report",
         "auto_push",
@@ -76,8 +79,9 @@ def is_allowed_staging_repair(decision, confidence, risk):
         "create_pr",
         "pull_request",
     )
-    return risk == "low" and confidence >= 0.90 and (
-        any(token in normalized for token in allowed_tokens) or normalized not in {"human_approval_required", "report_only"}
+    blocked_tokens = {"human_approval_required", "human-gated", "report_only", "analysis_only"}
+    return normalized_risk == "low" and confidence >= 0.90 and (
+        any(token in normalized for token in allowed_tokens) or normalized not in blocked_tokens
     )
 
 
@@ -88,13 +92,24 @@ def main():
     args = parser.parse_args()
 
     analysis = json.loads(Path(args.analysis).read_text(encoding="utf-8"))
-    confidence = float(analysis.get("confidence", 0))
-    risk = analysis.get("risk")
-    decision = analysis.get("automation_decision")
+    confidence = float(analysis.get("confidence", analysis.get("score", 0)))
+    risk = analysis.get("risk", "")
+    decision = analysis.get(
+        "automation_decision",
+        analysis.get("automationDecision", analysis.get("agent_state", "")),
+    )
+    normalized_risk = str(risk).lower()
     app_file = Path("app.py")
     patched = False
+    print(
+        "AI repair gate:",
+        f"stage={args.stage}",
+        f"decision={decision}",
+        f"risk={risk}",
+        f"confidence={confidence}",
+    )
 
-    if args.stage == "dev" and decision == "auto_push_and_merge" and risk == "low":
+    if args.stage == "dev" and decision == "auto_push_and_merge" and normalized_risk == "low":
         patched = replace_regex_all(
             app_file,
             r"(?m)^[-./\\]+\s*(#.*)?\n?",
