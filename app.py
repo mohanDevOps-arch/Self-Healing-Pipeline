@@ -33,10 +33,6 @@ def create_user():
     data = request.get_json(silent=True) or {}
     name = str(data.get("name", "")).strip()
 
-    # BROKEN: rejects valid names, so POST /users returns 400 instead of 201.
-    if data.get("name"):
-        return jsonify({"error": "Name required"}), 400
-
     if not name:
         return jsonify({"error": "Name required"}), 400
 
