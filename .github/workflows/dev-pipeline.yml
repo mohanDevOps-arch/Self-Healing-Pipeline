@@ -135,5 +135,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr merge ${{ steps.dev-pr.outputs.pull-request-number }} --squash --auto || \
+          gh pr merge ${{ steps.dev-pr.outputs.pull-request-number }} --squash --auto --delete-branch || \
           gh pr merge ${{ steps.dev-pr.outputs.pull-request-number }} --squash --delete-branch
