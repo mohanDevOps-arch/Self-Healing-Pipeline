@@ -61,6 +61,7 @@ docker-compose.override.yml
 test-results.xml
 bandit-report.json
 coverage-report/
+ai-analysis.json
 
 # Database
 *.db
