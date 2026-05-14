@@ -7,6 +7,7 @@ app = Flask(__name__)
 users = {}
 user_id = 1
 
+
 @app.route("/health", methods=["GET"])
 def health():
     return (
@@ -23,7 +24,7 @@ def health():
 
 
 @app.route("/users", methods=["GET"])
-def get_users():  # BROKEN
+def get_users():
     return jsonify(list(users.values())), 200
 
 
