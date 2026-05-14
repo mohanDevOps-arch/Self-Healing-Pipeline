@@ -3,25 +3,27 @@ from datetime import datetime, timezone
 
 from flask import Flask, jsonify, request
 
-
 app = Flask(__name__)
 users = {}
 user_id = 1
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify(
-        {
-            "service": "user-api",
-            "status": "ok",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "user_count": len(users),
-        }
-    ), 200
+    return (
+        jsonify(
+            {
+                "service": "user-api",
+                "status": "ok",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "user_count": len(users),
+            }
+        ),
+        200,
+    )
 
 
 @app.route("/users", methods=["GET"])
-def get_users(): # BROKEN: missing colon
+def get_users():  # BROKEN
     return jsonify(list(users.values())), 200
 
 
