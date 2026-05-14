@@ -24,7 +24,7 @@ def health():
 
 
 @app.route("/users", methods=["GET"])
-def get_users():  # BROKEN
+def get_users():
     return jsonify(list(users.values())), 200
 
 
