@@ -7,6 +7,7 @@ app = Flask(__name__)
 users = {}
 user_id = 1
 
+
 @app.route("/health", methods=["GET"])
 def health():
     return (
