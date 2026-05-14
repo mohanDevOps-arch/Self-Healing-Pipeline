@@ -7,7 +7,6 @@ from flask import Flask, jsonify, request
 app = Flask(__name__)
 users = {}
 user_id = 1
--
 
 @app.route("/health", methods=["GET"])
 def health():
@@ -22,7 +21,7 @@ def health():
 
 
 @app.route("/users", methods=["GET"])
-def get_users()  # BROKEN: missing colon
+def get_users(): # BROKEN: missing colon
     return jsonify(list(users.values())), 200
 
 
